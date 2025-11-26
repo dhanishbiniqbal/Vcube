@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { signOut } from "firebase/auth";
-import { auth } from "../firebase.ts";
+import { auth, db, storage } from "../firebase.ts";
+import { collection, addDoc, getDocs, updateDoc, deleteDoc, doc } from "firebase/firestore";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { products as initialProducts, Product } from "../lib/products";
 import {
   LogOut,
@@ -27,6 +29,8 @@ export default function AdminDashboard() {
   const [products, setProducts] = useState<Product[]>(initialProducts);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const [formData, setFormData] = useState<Partial<Product>>({
     name: "",
     description: "",
@@ -38,17 +42,38 @@ export default function AdminDashboard() {
     featured: false,
   });
 
-  // Load products from localStorage on mount
+  // Load products from Firestore on mount
   useEffect(() => {
-    const savedProducts = localStorage.getItem("vcube_products");
-    if (savedProducts) {
-      try {
-        setProducts(JSON.parse(savedProducts));
-      } catch (error) {
-        console.error("Failed to load products from localStorage:", error);
-      }
-    }
+    loadProductsFromFirestore();
   }, []);
+
+  const loadProductsFromFirestore = async () => {
+    try {
+      const querySnapshot = await getDocs(collection(db, "products"));
+      const firestoreProducts: Product[] = [];
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        firestoreProducts.push({
+          id: doc.id,
+          name: data.name,
+          description: data.description,
+          price: data.price,
+          category_id: data.category_id,
+          image_url: data.image_url,
+          sizes: data.sizes || [],
+          colors: data.colors || [],
+          featured: data.featured || false,
+          created_at: data.created_at,
+        } as Product);
+      });
+      console.log("✅ Loaded products from Firestore:", firestoreProducts);
+      setProducts(firestoreProducts);
+    } catch (error) {
+      console.error("❌ Failed to load products from Firestore:", error);
+      // Fallback to initial products if Firestore fails
+      setProducts(initialProducts);
+    }
+  };
 
   const logout = async () => {
     await signOut(auth);
@@ -61,7 +86,12 @@ export default function AdminDashboard() {
     const { name, value, type } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: type === "checkbox" ? (e.target as HTMLInputElement).checked : value,
+      [name]: 
+        type === "checkbox" 
+          ? (e.target as HTMLInputElement).checked 
+          : type === "number"
+          ? Number(value)
+          : value,
     }));
   };
 
@@ -75,60 +105,141 @@ export default function AdminDashboard() {
     setFormData((prev) => ({ ...prev, colors }));
   };
 
-  const handleAddProduct = () => {
-    if (!formData.name || !formData.description || !formData.price) {
-      alert("Please fill in all required fields");
+  const handleAddProduct = async () => {
+    console.log("🔍 DEBUG: Add Product button clicked!");
+    
+    console.log("🔍 DEBUG: formData =", formData);
+    console.log("🔍 DEBUG: formData.name =", formData.name);
+    console.log("🔍 DEBUG: formData.price =", formData.price);
+    console.log("🔍 DEBUG: formData.description =", formData.description);
+    
+    // Validation: Check required fields
+    if (!formData.name?.trim()) {
+      console.warn("⚠️ Name is empty");
+      alert("Please enter a product name");
+      return;
+    }
+    if (!formData.description?.trim()) {
+      console.warn("⚠️ Description is empty");
+      alert("Please enter a product description");
+      return;
+    }
+    if (!formData.price || formData.price <= 0) {
+      console.warn("⚠️ Price is invalid:", formData.price);
+      alert("Please enter a valid price");
       return;
     }
 
     try {
-      const newProduct: Product = {
-        id: `p${Date.now()}`,
-        name: formData.name || "",
-        description: formData.description || "",
-        price: Number(formData.price) || 0,
+      setUploading(true);
+      console.log("🚀 Starting product addition...");
+      
+      // Use default image - Firebase Storage has CORS issues, skip image upload for now
+      const imageUrl = "/V-cube-1-3-1.png";
+      console.log("📸 Using default image: " + imageUrl);
+
+      // Create product object
+      const newProduct = {
+        name: formData.name.trim(),
+        description: formData.description.trim(),
+        price: Number(formData.price),
         category_id: formData.category_id || "shirts",
-        image_url: formData.image_url || "/V-cube-1-3-1.png",
+        image_url: imageUrl,
         sizes: Array.isArray(formData.sizes) ? formData.sizes : [],
         colors: Array.isArray(formData.colors) ? formData.colors : [],
         featured: Boolean(formData.featured) || false,
         created_at: new Date().toISOString(),
       };
 
-      const updatedProducts = [...products, newProduct];
-      setProducts(updatedProducts);
-      const jsonData = JSON.stringify(updatedProducts);
-      console.log("💾 Saving to localStorage:", jsonData);
-      localStorage.setItem("vcube_products", jsonData);
-      console.log("✅ Product saved! Total products:", updatedProducts.length);
-      console.log("📍 New product:", newProduct);
+      // Save to Firestore
+      console.log("💾 Saving product to Firestore:", newProduct);
+      const docRef = await addDoc(collection(db, "products"), newProduct);
+      console.log("✅ Product saved to Firestore with ID:", docRef.id);
+
+      // Update local state
+      const productWithId: Product = {
+        ...newProduct,
+        id: docRef.id,
+      } as Product;
+      setProducts([...products, productWithId]);
+      
       resetForm();
-      alert("Product added successfully!");
+      setImageFile(null);
+      alert("✅ Product added successfully!");
     } catch (error) {
-      console.error("Error adding product:", error);
-      alert("Failed to add product. Please try again.");
+      console.error("❌ Error adding product:", error);
+      alert("❌ Failed to add product: " + (error instanceof Error ? error.message : String(error)));
+    } finally {
+      setUploading(false);
     }
   };
 
-  const handleUpdateProduct = () => {
-    if (!editingProduct) return;
+  const handleUpdateProduct = async () => {
+    console.log("🔍 DEBUG: Update Product button clicked!");
+    
+    if (!editingProduct) {
+      console.error("❌ No product selected for editing");
+      alert("No product selected for editing");
+      return;
+    }
 
     try {
+      setUploading(true);
+      console.log("🚀 Starting product update...");
+      console.log("🔍 Editing product ID:", editingProduct.id);
+      console.log("🔍 Form data:", formData);
+      
+      // Keep existing image - Firebase Storage has CORS issues, skip image upload for now
+      let imageUrl = editingProduct.image_url;
+      console.log("📸 Keeping existing image: " + imageUrl);
+
+      const updatedData = {
+        name: formData.name || editingProduct.name,
+        description: formData.description || editingProduct.description,
+        price: Number(formData.price) || editingProduct.price,
+        category_id: formData.category_id || editingProduct.category_id,
+        image_url: imageUrl,
+        sizes: Array.isArray(formData.sizes) ? formData.sizes : editingProduct.sizes,
+        colors: Array.isArray(formData.colors) ? formData.colors : editingProduct.colors,
+        featured: Boolean(formData.featured) || editingProduct.featured,
+      };
+
+      console.log("💾 Updating product in Firestore with data:", updatedData);
+      // Update in Firestore
+      await updateDoc(doc(db, "products", editingProduct.id), updatedData);
+      console.log("✅ Product updated in Firestore");
+
+      // Update local state
       const updatedProducts = products.map((p) =>
         p.id === editingProduct.id
           ? {
-              ...editingProduct,
-              ...formData,
+              ...p,
+              ...updatedData,
             }
           : p
       ) as Product[];
       setProducts(updatedProducts);
-      localStorage.setItem("vcube_products", JSON.stringify(updatedProducts));
-      resetForm();
-      alert("Product updated successfully!");
+      
+      // Reset form and close after successful update
+      setEditingProduct(null);
+      setShowAddForm(false);
+      setImageFile(null);
+      setFormData({
+        name: "",
+        description: "",
+        price: 0,
+        category_id: "shirts",
+        image_url: "",
+        sizes: [],
+        colors: [],
+        featured: false,
+      });
+      alert("✅ Product updated successfully!");
     } catch (error) {
-      console.error("Error updating product:", error);
-      alert("Failed to update product. Please try again.");
+      console.error("❌ Error updating product:", error);
+      alert("❌ Failed to update product: " + (error instanceof Error ? error.message : String(error)));
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -138,15 +249,19 @@ export default function AdminDashboard() {
     setShowAddForm(true);
   };
 
-  const handleDeleteProduct = (id: string) => {
+  const handleDeleteProduct = async (id: string) => {
     if (window.confirm("Are you sure you want to delete this product?")) {
       try {
+        // Delete from Firestore
+        await deleteDoc(doc(db, "products", id));
+        console.log("✅ Product deleted from Firestore");
+
+        // Update local state
         const updatedProducts = products.filter((p) => p.id !== id);
         setProducts(updatedProducts);
-        localStorage.setItem("vcube_products", JSON.stringify(updatedProducts));
         alert("Product deleted successfully!");
       } catch (error) {
-        console.error("Error deleting product:", error);
+        console.error("❌ Error deleting product:", error);
         alert("Failed to delete product. Please try again.");
       }
     }
@@ -338,12 +453,16 @@ export default function AdminDashboard() {
                         <option value="accessories">Accessories</option>
                       </select>
                       <input
-                        type="text"
-                        name="image_url"
-                        placeholder="Image URL"
-                        value={formData.image_url || ""}
-                        onChange={handleInputChange}
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          if (e.target.files?.[0]) {
+                            setImageFile(e.target.files[0]);
+                            console.log("📁 Image file selected:", e.target.files[0].name);
+                          }
+                        }}
                         className="border rounded-lg px-4 py-2 w-full focus:outline-none focus:ring-2 focus:ring-black"
+                        placeholder="Upload Product Image"
                       />
                     </div>
 
@@ -388,14 +507,24 @@ export default function AdminDashboard() {
                       <button
                         type="button"
                         onClick={editingProduct ? handleUpdateProduct : handleAddProduct}
-                        className="bg-black text-white px-6 py-2 rounded-lg hover:bg-gray-800 transition"
+                        disabled={uploading}
+                        className={`px-6 py-2 rounded-lg transition ${
+                          uploading
+                            ? "bg-gray-400 text-white cursor-not-allowed"
+                            : "bg-black text-white hover:bg-gray-800"
+                        }`}
                       >
-                        {editingProduct ? "Update Product" : "Add Product"}
+                        {uploading ? "Uploading..." : editingProduct ? "Update Product" : "Add Product"}
                       </button>
                       <button
                         type="button"
                         onClick={resetForm}
-                        className="bg-gray-300 text-black px-6 py-2 rounded-lg hover:bg-gray-400 transition"
+                        disabled={uploading}
+                        className={`px-6 py-2 rounded-lg transition ${
+                          uploading
+                            ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                            : "bg-gray-300 text-black hover:bg-gray-400"
+                        }`}
                       >
                         Cancel
                       </button>

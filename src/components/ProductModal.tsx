@@ -8,116 +8,90 @@ interface ProductModalProps {
 }
 
 export function ProductModal({ product, onClose }: ProductModalProps) {
-  const [selectedSize, setSelectedSize] = useState('');
-  const [selectedColor, setSelectedColor] = useState('');
+  const [selectedSize, setSelectedSize] = useState("");
 
   const handleWhatsAppInquiry = () => {
-    const message = `Hi! I'm interested in:\n\nProduct: ${product.name}\nPrice: AED ${product.price.toFixed(2)}${selectedSize ? `\nSize: ${selectedSize}` : ''}${selectedColor ? `\nColor: ${selectedColor}` : ''}\n\nCould you provide more details?`;
-    const whatsappUrl = `https://api.whatsapp.com/send/?phone=971548886200&text=${encodeURIComponent(message)}`;
-    window.open(whatsappUrl, '_blank');
+    const message =
+      `Hi! I'm interested in your product:\n\n` +
+      `Product: ${product.name}\n` +
+      `Price: AED ${product.price}\n` +
+      (selectedSize ? `Size: ${selectedSize}\n` : "") +
+      `\nPlease send more details.`;
+
+    // ✅ WORKS EVEN IF POPUP BLOCKED
+    const link = document.createElement("a");
+    link.href = `https://wa.me/971548886200?text=${encodeURIComponent(message)}`;
+    link.target = "_blank";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
-      <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-        <div
-          className="fixed inset-0 transition-opacity bg-gray-900 bg-opacity-75"
+    <div className="fixed inset-0 z-50 bg-black/80 flex justify-center items-center">
+      <div className="bg-white text-black rounded-xl w-full max-w-4xl p-6 relative">
+
+        {/* CLOSE BUTTON */}
+        <button
           onClick={onClose}
-        ></div>
+          className="absolute top-4 right-4 bg-gray-200 hover:bg-gray-300 p-2 rounded-full"
+        >
+          <X />
+        </button>
 
-        <div className="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
-          <button
-            onClick={onClose}
-            className="absolute top-4 right-4 z-10 bg-white rounded-full p-2 hover:bg-gray-100 transition-colors"
-          >
-            <X size={24} />
-          </button>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
-          <div className="grid md:grid-cols-2 gap-8 p-8">
-            <div className="relative">
-              <img
-                src={product.image_url}
-                alt={product.name}
-                className="w-full h-96 object-cover rounded-xl"
-              />
-              {product.featured && (
-                <span className="absolute top-4 left-4 bg-red-600 text-white px-4 py-2 rounded-full text-sm font-semibold">
-                  Featured
-                </span>
-              )}
-            </div>
+          {/* IMAGE */}
+          <img
+            src={product.image_url}
+            alt={product.name}
+            className="w-full h-96 object-cover rounded-lg"
+          />
 
-            <div className="flex flex-col justify-between">
-              <div>
-                <h2 className="text-3xl font-bold text-gray-900 mb-4">
-                  {product.name}
-                </h2>
-                <p className="text-gray-600 text-lg mb-6 leading-relaxed">
-                  {product.description}
-                </p>
+          {/* PRODUCT INFO */}
+          <div>
+            <h2 className="text-2xl font-bold">{product.name}</h2>
+            <p className="mt-4 text-gray-600 leading-relaxed">
+              {product.description}
+            </p>
 
-                <div className="mb-6">
-                  <span className="text-4xl font-bold text-red-600">
-                    AED {product.price.toFixed(2)}
-                  </span>
+            <p className="mt-6 text-2xl text-red-600 font-bold">
+              AED {product.price}
+            </p>
+
+            {/* SIZE SELECT */}
+            {product.sizes?.length > 0 && (
+              <div className="mt-4">
+                <p className="font-semibold">Select size</p>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {product.sizes.map(size => (
+                    <button
+                      key={size}
+                      onClick={() => setSelectedSize(size)}
+                      className={`border rounded px-3 py-1 transition ${
+                        selectedSize === size
+                          ? "bg-red-600 text-white"
+                          : "hover:bg-gray-100"
+                      }`}
+                    >
+                      {size}
+                    </button>
+                  ))}
                 </div>
-
-                {product.sizes.length > 0 && (
-                  <div className="mb-6">
-                    <label className="block text-sm font-semibold text-gray-700 mb-3">
-                      Select Size
-                    </label>
-                    <div className="flex flex-wrap gap-2">
-                      {product.sizes.map((size) => (
-                        <button
-                          key={size}
-                          onClick={() => setSelectedSize(size)}
-                          className={`px-4 py-2 border-2 rounded-lg font-medium transition-all ${
-                            selectedSize === size
-                              ? 'border-red-600 bg-red-50 text-red-600'
-                              : 'border-gray-300 hover:border-red-300'
-                          }`}
-                        >
-                          {size}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {product.colors.length > 0 && (
-                  <div className="mb-6">
-                    <label className="block text-sm font-semibold text-gray-700 mb-3">
-                      Select Color
-                    </label>
-                    <div className="flex flex-wrap gap-2">
-                      {product.colors.map((color) => (
-                        <button
-                          key={color}
-                          onClick={() => setSelectedColor(color)}
-                          className={`px-4 py-2 border-2 rounded-lg font-medium transition-all ${
-                            selectedColor === color
-                              ? 'border-red-600 bg-red-50 text-red-600'
-                              : 'border-gray-300 hover:border-red-300'
-                          }`}
-                        >
-                          {color}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
+            )}
 
-              <button
-                onClick={handleWhatsAppInquiry}
-                className="w-full bg-red-600 text-white py-4 rounded-xl font-semibold hover:bg-red-700 transition-all flex items-center justify-center space-x-2 transform hover:scale-105 shadow-lg"
-              >
-                <MessageCircle size={24} />
-                <span>Inquire on WhatsApp</span>
-              </button>
-            </div>
+            {/* WHATSAPP BUTTON */}
+            <button
+              onClick={handleWhatsAppInquiry}
+              className="mt-6 w-full bg-red-600 hover:bg-red-700 text-white py-3 rounded-lg flex justify-center items-center gap-2"
+            >
+              <MessageCircle />
+              Inquire on WhatsApp
+            </button>
+
           </div>
+
         </div>
       </div>
     </div>

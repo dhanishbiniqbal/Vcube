@@ -1,3 +1,130 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+
+.input {
+  background: black;
+  padding: 12px;
+  border-radius: 8px;
+  outline: none;
+  border: 1px solid #444;
+}
+.input:focus {
+  border-color: #ef4444;
+}
+
+/* SIDEBAR BUTTONS */
+.nav-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px;
+  border-radius: 8px;
+}
+.nav-btn:hover {
+  background: #27272a;
+}
+.nav-btn.active {
+  background: #dc2626;
+}
+
+/* SMALL UI BUTTON */
+.btn {
+  background: #dc2626;
+  padding: 10px 16px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.btn:hover { opacity: .8; }
+
+/* BOX (CATEGORY SECTION) */
+.box {
+  background: #18181b;
+  padding: 16px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* CATEGORY TAG */
+.tag {
+  background: black;
+  padding: 6px 10px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* FORM */
+.form {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  background: #18181b;
+  padding: 20px;
+  border-radius: 12px;
+}
+.form input,
+.form select,
+.form textarea {
+  background: black;
+  color: white;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #444;
+}
+.full { grid-column: span 2; }
+
+/* SIZE BUTTON */
+.sizes {
+  grid-column: span 2;
+  display: flex;
+  gap: 8px;
+}
+.size {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid gray;
+}
+.size.active {
+  background: #dc2626;
+  border-color: #dc2626;
+}
+
+/* BUTTON ROW */
+.btn-row {
+  display: flex;
+  gap: 10px;
+  grid-column: span 2;
+}
+.btn.green { background: #16a34a; }
+.btn.gray { background: #52525b; }
+
+/* TABLE */
+.table-box {
+  margin-top: 20px;
+  border-radius: 12px;
+  overflow: hidden;
+}
+.table-box table { width: 100%; background:#18181b }
+.table-box th, .table-box td {
+  padding: 12px;
+  text-align: left;
+}
+.table-box thead { background:#27272a }
+.table-box tbody tr:hover { background:#27272a }
+
+/* DASHBOARD CARD */
+.card {
+  padding: 18px;
+  border-radius: 12px;
+  font-weight: bold;
+}

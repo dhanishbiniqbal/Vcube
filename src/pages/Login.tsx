@@ -12,7 +12,7 @@ const isValidEmail = (email: string): boolean => {
 // Function to get user-friendly error messages
 const getErrorMessage = (error: AuthError): string => {
   const errorCode = error.code;
-  
+
   switch (errorCode) {
     case "auth/invalid-email":
       return "Please enter a valid email address";
@@ -43,7 +43,7 @@ export default function Login() {
   const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError("");
-    
+
     // Validation
     if (!email || !password) {
       setError("Please enter both email and password");
@@ -74,78 +74,69 @@ export default function Login() {
   };
 
   return (
-    <div style={{ width: "350px", margin: "100px auto", textAlign: "center" }}>
-      <h2>Admin Login</h2>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-black via-gray-900 to-red-900">
 
-      <form onSubmit={handleLogin}>
-        <input
-          type="email"
-          value={email}
-          placeholder="Email (e.g., admin@example.com)"
-          onChange={(e) => setEmail(e.target.value)}
-          style={{ 
-            padding: "10px", 
-            marginTop: "10px", 
-            width: "100%",
-            boxSizing: "border-box",
-            border: "1px solid #ddd",
-            borderRadius: "4px"
-          }}
-          autoComplete="email"
-          disabled={loading}
-        />
+      <div className="bg-white rounded-2xl shadow-2xl w-[360px] p-8 animate-fadeIn">
 
-        <input
-          type="password"
-          value={password}
-          placeholder="Password"
-          onChange={(e) => setPassword(e.target.value)}
-          style={{ 
-            padding: "10px", 
-            marginTop: "10px", 
-            width: "100%",
-            boxSizing: "border-box",
-            border: "1px solid #ddd",
-            borderRadius: "4px"
-          }}
-          autoComplete="current-password"
-          disabled={loading}
-        />
+        <h2 className="text-2xl font-bold text-center text-gray-900 mb-1">
+           Login
+        </h2>
 
-        {error && (
-          <p style={{ 
-            color: "#d32f2f", 
-            marginTop: "10px",
-            fontSize: "14px",
-            textAlign: "left",
-            padding: "8px",
-            backgroundColor: "#ffebee",
-            borderRadius: "4px",
-            border: "1px solid #ffcdd2"
-          }}>
-            {error}
-          </p>
-        )}
+        <p className="text-center text-gray-500 text-sm mb-6">
+          Please login to access the dashboard
+        </p>
 
-        <button
-          type="submit"
-          disabled={loading}
-          style={{
-            marginTop: "20px",
-            width: "100%",
-            padding: "10px",
-            background: loading ? "#999" : "black",
-            color: "white",
-            cursor: loading ? "not-allowed" : "pointer",
-            borderRadius: "4px",
-            border: "none",
-            fontWeight: "bold",
-            transition: "background 0.3s"
-          }}
-        >
-          {loading ? "Logging in..." : "Login"}
-        </button>
-      </form>
+        <form onSubmit={handleLogin} className="space-y-4">
+
+          <div>
+            <input
+              type="email"
+              value={email}
+              placeholder="Email (e.g., admin@example.com)"
+              onChange={(e) => setEmail(e.target.value)}
+              disabled={loading}
+              autoComplete="email"
+              className="w-full px-4 py-3 rounded-lg border border-gray-300 outline-none focus:ring-2 focus:ring-black transition"
+            />
+          </div>
+
+          <div>
+            <input
+              type="password"
+              value={password}
+              placeholder="Password"
+              onChange={(e) => setPassword(e.target.value)}
+              disabled={loading}
+              autoComplete="current-password"
+              className="w-full px-4 py-3 rounded-lg border border-gray-300 outline-none focus:ring-2 focus:ring-black transition"
+            />
+          </div>
+
+          {error && (
+            <div className="bg-red-50 text-red-600 border border-red-200 px-4 py-2 rounded-md text-sm">
+              {error}
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={loading}
+            className={`w-full py-3 rounded-lg text-white font-semibold transition transform hover:scale-[1.02] ${
+              loading
+                ? "bg-gray-400 cursor-not-allowed"
+                : "bg-black hover:bg-gray-900"
+            }`}
+          >
+            {loading ? "Logging in..." : "Login"}
+          </button>
+
+        </form>
+
+        <div className="mt-6 text-center text-xs text-gray-400">
+          Powered by Vcube Admin Panel
+        </div>
+
+      </div>
     </div>
   );
 }

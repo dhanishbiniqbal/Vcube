@@ -16,6 +16,7 @@ function HomePage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [searchQuery, setSearchQuery] = useState("");       // ✅ SEARCH STATE
   const [loading, setLoading] = useState(true);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
@@ -44,10 +45,10 @@ function HomePage() {
           created_at: data.created_at,
         } as Product);
       });
-      
-      console.log("✅ Loaded products from Firestore:", firestoreProducts);
+
       setProducts(firestoreProducts);
       setFilteredProducts(firestoreProducts);
+
     } catch (error) {
       console.error("❌ Failed to load products from Firestore:", error);
       setProducts([]);
@@ -57,20 +58,41 @@ function HomePage() {
     }
   };
 
+  // ✅ FILTER BY CATEGORY + SEARCH
   useEffect(() => {
-    if (selectedCategory === 'all') {
-      setFilteredProducts(products);
-    } else {
-      const filtered = products.filter((p) => p.category_id === selectedCategory);
-      setFilteredProducts(filtered);
+    let result = [...products];
+
+    // Category filter
+    if (selectedCategory !== "all") {
+      result = result.filter(
+        (p) => p.category_id.toLowerCase() === selectedCategory.toLowerCase()
+      );
     }
-  }, [selectedCategory, products]);
+
+    // Search filter
+    if (searchQuery.trim() !== "") {
+      result = result.filter((p) =>
+        p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        p.category_id.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+
+    setFilteredProducts(result);
+
+  }, [selectedCategory, searchQuery, products]);
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
-      <Header onCategorySelect={setSelectedCategory} selectedCategory={selectedCategory} />
+
+      {/* ✅ HEADER WITH SEARCH ENABLED */}
+      <Header
+        onCategorySelect={setSelectedCategory}
+        selectedCategory={selectedCategory}
+        onSearch={setSearchQuery}     // ✅ SEARCH WIRING
+      />
+
       <Hero />
-      
+
       <section id="products" className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 w-full">
         <div className="text-center mb-12">
           <h2 className="text-4xl font-bold">Our Products</h2>
@@ -79,11 +101,9 @@ function HomePage() {
 
         {loading ? (
           <div className="flex justify-center py-20">
-            <div className="text-center">
-              <p className="text-gray-500">Loading products...</p>
-            </div>
+            <p className="text-gray-500">Loading products...</p>
           </div>
-        ) : filteredProducts && filteredProducts.length > 0 ? (
+        ) : filteredProducts.length > 0 ? (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {filteredProducts.map((p) => (
               <div key={p.id} className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow">
@@ -94,6 +114,7 @@ function HomePage() {
                     className="w-full h-full object-cover hover:scale-105 transition-transform"
                   />
                 </div>
+
                 <div className="p-4">
                   {p.featured && (
                     <span className="inline-block bg-red-600 text-white text-xs font-bold px-2 py-1 rounded mb-2">
@@ -104,7 +125,10 @@ function HomePage() {
                   <p className="text-gray-600 text-sm line-clamp-2 mt-1">{p.description}</p>
                   <div className="mt-3 flex items-center justify-between">
                     <p className="text-red-600 font-bold text-lg">AED {p.price}</p>
-                    <button onClick={() => setSelectedProduct(p)} className="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700 transition">
+                    <button 
+                      onClick={() => setSelectedProduct(p)}
+                      className="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700 transition"
+                    >
                       View
                     </button>
                   </div>
@@ -120,7 +144,10 @@ function HomePage() {
       </section>
 
       {selectedProduct && (
-        <ProductModal product={selectedProduct} onClose={() => setSelectedProduct(null)} />
+        <ProductModal
+          product={selectedProduct}
+          onClose={() => setSelectedProduct(null)}
+        />
       )}
 
       <Footer />

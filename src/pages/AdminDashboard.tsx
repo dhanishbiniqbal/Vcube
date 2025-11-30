@@ -19,10 +19,13 @@ import {
   Pencil,
   X
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 type View = "dashboard" | "products";
 
 export default function AdminDashboard() {
+  const navigate = useNavigate();
+
   const [activeView, setActiveView] = useState<View>("dashboard");
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
@@ -41,6 +44,12 @@ export default function AdminDashboard() {
 
   const SIZES = ["S", "M", "L", "XL", "XXL"];
 
+  const ITEMS_PER_PAGE = 10;
+  const [currentPage, setCurrentPage] = useState(1);
+  const totalPages = Math.ceil(products.length / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const currentProducts = products.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+
   useEffect(() => {
     loadProducts();
     loadCategories();
@@ -49,8 +58,15 @@ export default function AdminDashboard() {
   const loadProducts = async () => {
     const snapshot = await getDocs(collection(db, "products"));
     const data: any[] = [];
-    snapshot.forEach(d => data.push({ id: d.id, ...d.data(), sizes: d.data().sizes || [] }));
+    snapshot.forEach(d =>
+      data.push({
+        id: d.id,
+        ...d.data(),
+        sizes: d.data().sizes || []
+      })
+    );
     setProducts(data);
+    setCurrentPage(1);
   };
 
   const loadCategories = async () => {
@@ -122,37 +138,32 @@ export default function AdminDashboard() {
     }));
   };
 
-  const logout = () => signOut(auth);
+  // ✅ LOGOUT FIX
+  const logout = async () => {
+    await signOut(auth);
+    navigate("/login", { replace: true });
+  };
 
   return (
     <div className="h-screen flex bg-gray-900 text-white">
-
-      {/* SIDEBAR */}
       <aside className="w-72 bg-gradient-to-b from-black to-zinc-900 shadow-xl">
         <h1 className="text-2xl font-bold p-6">VCUBE Admin</h1>
         <nav className="space-y-2 px-4">
-
           <button
             onClick={() => setActiveView("dashboard")}
-            className={`nav-btn ${activeView === "dashboard" && "active"}`}
-          >
+            className={`nav-btn ${activeView === "dashboard" && "active"}`}>
             <LayoutDashboard size={18}/> Dashboard
           </button>
 
           <button
             onClick={() => setActiveView("products")}
-            className={`nav-btn ${activeView === "products" && "active"}`}
-          >
+            className={`nav-btn ${activeView === "products" && "active"}`}>
             <Shirt size={18}/> Products
           </button>
-
         </nav>
       </aside>
 
-      {/* MAIN */}
       <main className="flex-1 overflow-auto">
-
-        {/* HEADER */}
         <header className="bg-black/60 flex justify-between items-center p-6 border-b border-zinc-700">
           <h2 className="text-xl font-semibold capitalize">{activeView}</h2>
           <button onClick={logout} className="btn">
@@ -160,7 +171,6 @@ export default function AdminDashboard() {
           </button>
         </header>
 
-        {/* DASHBOARD */}
         {activeView === "dashboard" && (
           <section className="p-8 grid grid-cols-2 md:grid-cols-4 gap-6">
             <div className="card bg-orange-600">Products: {products.length}</div>
@@ -168,28 +178,20 @@ export default function AdminDashboard() {
           </section>
         )}
 
-        {/* PRODUCTS */}
         {activeView === "products" && (
           <section className="p-6">
-
             <div className="flex justify-between mb-6">
               <h2 className="text-2xl font-bold">Product Management</h2>
-              <button
-                onClick={() => setShowAddForm(true)}
-                className="btn"
-              >
+              <button onClick={() => setShowAddForm(true)} className="btn">
                 <PlusCircle size={18}/> Add Product
               </button>
             </div>
 
-            {/* CATEGORIES */}
             <div className="box">
-              <input
-                value={newCategory}
+              <input value={newCategory}
                 onChange={e => setNewCategory(e.target.value)}
                 placeholder="New category"
-                className="input"
-              />
+                className="input" />
               <button onClick={addCategory} className="btn">Add Category</button>
 
               <div className="flex gap-2 flex-wrap">
@@ -204,73 +206,48 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            {/* FORM */}
             {showAddForm && (
               <div className="form">
-
-                <input
-                  placeholder="Product Name"
+                <input placeholder="Product Name"
                   value={formData.name}
-                  onChange={e => setFormData({...formData, name:e.target.value})}
-                />
+                  onChange={e => setFormData({...formData, name:e.target.value})}/>
 
-                <input
-                  placeholder="Price"
+                <input placeholder="Price"
                   value={formData.price}
-                  onChange={e => setFormData({...formData, price:e.target.value})}
-                />
+                  onChange={e => setFormData({...formData, price:e.target.value})}/>
 
                 <select
                   value={formData.category_id}
-                  onChange={e => setFormData({...formData, category_id:e.target.value})}
-                >
+                  onChange={e => setFormData({...formData, category_id:e.target.value})}>
                   <option value="">Select Category</option>
                   {categories.map(c => (
                     <option key={c.id} value={c.slug}>{c.name}</option>
                   ))}
                 </select>
 
-                <div />
-
-                <textarea
-                  rows={3}
-                  placeholder="Description"
-                  className="full"
+                <textarea rows={3} placeholder="Description" className="full"
                   value={formData.description}
-                  onChange={e => setFormData({...formData, description:e.target.value})}
-                />
+                  onChange={e => setFormData({...formData, description:e.target.value})}/>
 
-                {/* SIZES */}
                 <div className="sizes">
                   {SIZES.map(size => (
-                    <button
-                      key={size}
+                    <button key={size}
                       onClick={() => toggleSize(size)}
-                      className={`size ${formData.sizes.includes(size) ? "active" : ""}`}
-                    >
+                      className={`size ${formData.sizes.includes(size) ? "active" : ""}`}>
                       {size}
                     </button>
                   ))}
                 </div>
 
-                {/* BUTTONS */}
                 <div className="btn-row">
-                  <button
-                    onClick={editingProduct ? updateProduct : addProduct}
-                    className="btn green"
-                  >
+                  <button onClick={editingProduct ? updateProduct : addProduct} className="btn green">
                     {editingProduct ? "Update" : "Add"}
                   </button>
-
-                  <button onClick={resetForm} className="btn gray">
-                    Cancel
-                  </button>
+                  <button onClick={resetForm} className="btn gray">Cancel</button>
                 </div>
-
               </div>
             )}
 
-            {/* TABLE */}
             <div className="table-box">
               <table>
                 <thead>
@@ -282,55 +259,54 @@ export default function AdminDashboard() {
                     <th>Action</th>
                   </tr>
                 </thead>
-
                 <tbody>
-                  {products.map(p => (
+                  {currentProducts.map(p => (
                     <tr key={p.id}>
                       <td>{p.name}</td>
                       <td>{p.category_id}</td>
                       <td>{p.sizes.length ? p.sizes.join(", ") : "-"}</td>
                       <td>₹ {p.price}</td>
-                      <td>
-                        <div className="flex gap-2">
+                      <td className="flex gap-2">
+                        <button className="bg-blue-600 p-2 rounded" onClick={() => {
+                          setEditingProduct(p);
+                          setFormData({
+                            name: p.name || "",
+                            price: p.price || "",
+                            description: p.description || "",
+                            category_id: p.category_id || "",
+                            sizes: p.sizes || []
+                          });
+                          setShowAddForm(true);
+                        }}>
+                          <Pencil size={16}/>
+                        </button>
 
-                          {/* EDIT */}
-                          <button
-                            onClick={() => {
-                              setEditingProduct(p);
-                              setFormData({
-                                name: p.name || "",
-                                price: p.price || "",
-                                description: p.description || "",
-                                category_id: p.category_id || "",
-                                sizes: Array.isArray(p.sizes) ? p.sizes : []
-                              });
-                              setShowAddForm(true);
-                            }}
-                            className="bg-blue-600 p-2 rounded"
-                          >
-                            <Pencil size={16}/>
-                          </button>
-
-                          {/* DELETE */}
-                          <button
-                            onClick={() => deleteProduct(p.id)}
-                            className="bg-red-600 p-2 rounded"
-                          >
-                            <Trash2 size={16}/>
-                          </button>
-
-                        </div>
+                        <button className="bg-red-600 p-2 rounded" onClick={() => deleteProduct(p.id)}>
+                          <Trash2 size={16}/>
+                        </button>
                       </td>
                     </tr>
                   ))}
                 </tbody>
-
               </table>
+            </div>
+
+            <div className="flex justify-center gap-4 mt-4">
+              <button disabled={currentPage === 1}
+                onClick={() => setCurrentPage(p => Math.max(p - 1, 1))}
+                className="btn gray">Prev</button>
+
+              <span className="pt-2">
+                Page {currentPage} of {totalPages || 1}
+              </span>
+
+              <button disabled={currentPage === totalPages}
+                onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))}
+                className="btn gray">Next</button>
             </div>
 
           </section>
         )}
-
       </main>
     </div>
   );

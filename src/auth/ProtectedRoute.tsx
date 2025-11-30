@@ -1,25 +1,32 @@
 import { useEffect, useState, ReactNode } from "react";
-import { onAuthStateChanged } from "firebase/auth";
-import { auth } from "../firebase.ts";
+import { onAuthStateChanged, User } from "firebase/auth";
+import { auth } from "../firebase";
+import { Navigate } from "react-router-dom";
 
 interface ProtectedRouteProps {
   children: ReactNode;
 }
 
 export default function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const [user, setUser] = useState<unknown>(null);
+  const [user, setUser] = useState<User | null>(null);
+  const [checking, setChecking] = useState(true);
 
   useEffect(() => {
-    onAuthStateChanged(auth, (currentUser) => {
-      if (!currentUser) {
-        window.location.href = "/login";
-      } else {
-        setUser(currentUser);
-      }
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setChecking(false);
     });
+
+    return () => unsubscribe();
   }, []);
 
-  if (!user) return <p style={{ textAlign: "center" }}>Loading...</p>;
+  if (checking) {
+    return <p style={{ textAlign: "center" }}>Checking authentication...</p>;
+  }
 
-  return children;
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return <>{children}</>;
 }

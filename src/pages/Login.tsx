@@ -1,6 +1,6 @@
-import { useState, FormEvent } from "react";
-import { signInWithEmailAndPassword, AuthError } from "firebase/auth";
-import { auth } from "../firebase.ts";
+import { useState, useEffect, FormEvent } from "react";
+import { signInWithEmailAndPassword, AuthError, onAuthStateChanged } from "firebase/auth";
+import { auth } from "../firebase"; // ✅ no .ts extension
 import { useNavigate } from "react-router-dom";
 
 // Email validation regex
@@ -38,13 +38,31 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // ✅ New state: to check if user is already logged in
+  const [checkingAuth, setCheckingAuth] = useState(true);
+
   const navigate = useNavigate();
+
+  // ✅ If user is already logged in, redirect away from /login
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      if (currentUser) {
+        // Already logged in → go to admin
+        navigate("/admin", { replace: true });
+      } else {
+        // Not logged in → show login form
+        setCheckingAuth(false);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [navigate]);
 
   const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError("");
 
-    // Validation
     if (!email || !password) {
       setError("Please enter both email and password");
       return;
@@ -63,7 +81,7 @@ export default function Login() {
     try {
       setLoading(true);
       await signInWithEmailAndPassword(auth, email.trim().toLowerCase(), password);
-      navigate("/admin");
+      navigate("/admin", { replace: true }); // ✅ prevent back to login
     } catch (err) {
       const firebaseError = err as AuthError;
       console.error("Login error:", firebaseError);
@@ -73,13 +91,20 @@ export default function Login() {
     }
   };
 
+  // ✅ While checking if already logged in, don't flash the form
+  if (checkingAuth) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-black via-gray-900 to-red-900">
+        <p className="text-white text-lg">Checking your session...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-black via-gray-900 to-red-900">
-
       <div className="bg-white rounded-2xl shadow-2xl w-[360px] p-8 animate-fadeIn">
-
         <h2 className="text-2xl font-bold text-center text-gray-900 mb-1">
-           Login
+          Login
         </h2>
 
         <p className="text-center text-gray-500 text-sm mb-6">
@@ -87,12 +112,11 @@ export default function Login() {
         </p>
 
         <form onSubmit={handleLogin} className="space-y-4">
-
           <div>
             <input
               type="email"
               value={email}
-              placeholder="Email (e.g., admin@example.com)"
+              placeholder="Email (e.g., userpreview@gmail.com)"
               onChange={(e) => setEmail(e.target.value)}
               disabled={loading}
               autoComplete="email"
@@ -129,13 +153,7 @@ export default function Login() {
           >
             {loading ? "Logging in..." : "Login"}
           </button>
-
         </form>
-
-        <div className="mt-6 text-center text-xs text-gray-400">
-          Powered by Vcube Admin Panel
-        </div>
-
       </div>
     </div>
   );
